@@ -684,8 +684,8 @@ class QwenShardingStrategy(TensorParallelShardingStrategy):
                 layer.self_attn.k_proj = self.all_to_sharded_linear(layer.self_attn.k_proj)
                 layer.self_attn.v_proj = self.all_to_sharded_linear(layer.self_attn.v_proj)
                 layer.self_attn.o_proj = self.sharded_to_all_linear(layer.self_attn.o_proj)
-                layer.self_attn.n_heads //= self.N
-                layer.self_attn.n_kv_heads //= self.N
+                layer.self_attn.num_attention_heads //= self.N
+                layer.self_attn.num_key_value_heads //= self.N
 
             # Shard the MoE. Shard in place since the MoE should be responsible
             # for aggregating the results.
