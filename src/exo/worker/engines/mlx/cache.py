@@ -183,8 +183,17 @@ def encode_prompt(tokenizer: TokenizerWrapper, prompt: str) -> mx.array:
 
 def cache_length(cache: KVCacheType) -> int:
     """Get the number of tokens in a KV cache."""
-    # Use .offset attribute which all cache types have (len() not implemented in older QuantizedKVCache)
-    return max(c.offset for c in cache)  # type: ignore
+    # Use .offset attribute for KVCache types, but MambaCache doesn't have offset
+    lengths = []
+    for c in cache:
+        if hasattr(c, "offset"):
+            lengths.append(c.offset)
+        elif hasattr(c, "lengths") and c.lengths is not None:
+            # ArraysCache/MambaCache uses lengths attribute
+            lengths.append(int(c.lengths.item()) if hasattr(c.lengths, "item") else 0)
+        else:
+            lengths.append(0)
+    return max(lengths) if lengths else 0
 
 
 def get_prefix_length(prompt: mx.array, cached_prompt: mx.array) -> int:
@@ -214,8 +223,8 @@ def make_kv_cache(
 ) -> KVCacheType:
     assert hasattr(model, "layers")
 
-    # TODO: Do this for all models
-    if hasattr(model, "make_cache") and isinstance(model, GptOssModel):
+    # Use model's custom make_cache if available (for models like GptOss, Qwen3, etc.)
+    if hasattr(model, "make_cache"):
         logger.info("Using MLX LM's make cache")
         return model.make_cache()  # type: ignore
 

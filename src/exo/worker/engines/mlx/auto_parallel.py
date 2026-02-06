@@ -164,12 +164,6 @@ def _inner_model(model: nn.Module) -> nn.Module:
     if isinstance(inner, nn.Module):
         return inner
 
-    inner = getattr(model, "language_model", None)
-    if isinstance(inner, nn.Module):
-        inner_inner = getattr(inner, "model", None)
-        if isinstance(inner_inner, nn.Module):
-            return inner_inner
-
     raise ValueError("Model must either have a 'model' or 'transformer' attribute")
 
 
@@ -684,13 +678,14 @@ class QwenShardingStrategy(TensorParallelShardingStrategy):
             eval_with_timeout(
                 layer.parameters(), timeout_seconds / len(model.layers), on_timeout
             )
-            # Shard the self attention
-            layer.self_attn.q_proj = self.all_to_sharded_linear(layer.self_attn.q_proj)
-            layer.self_attn.k_proj = self.all_to_sharded_linear(layer.self_attn.k_proj)
-            layer.self_attn.v_proj = self.all_to_sharded_linear(layer.self_attn.v_proj)
-            layer.self_attn.o_proj = self.sharded_to_all_linear(layer.self_attn.o_proj)
-            layer.self_attn.n_heads //= self.N
-            layer.self_attn.n_kv_heads //= self.N
+            # Shard the self attention (only if layer has self_attn, not linear_attn)
+            if hasattr(layer, "self_attn"):
+                layer.self_attn.q_proj = self.all_to_sharded_linear(layer.self_attn.q_proj)
+                layer.self_attn.k_proj = self.all_to_sharded_linear(layer.self_attn.k_proj)
+                layer.self_attn.v_proj = self.all_to_sharded_linear(layer.self_attn.v_proj)
+                layer.self_attn.o_proj = self.sharded_to_all_linear(layer.self_attn.o_proj)
+                layer.self_attn.n_heads //= self.N
+                layer.self_attn.n_kv_heads //= self.N
 
             # Shard the MoE. Shard in place since the MoE should be responsible
             # for aggregating the results.

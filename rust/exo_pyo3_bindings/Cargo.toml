@@ -32,6 +32,7 @@ pyo3 = { version = "0.27.1", features = [
     #"experimental-inspect", # inspection of generated binary => easier to automate type-hint generation
     #"py-clone", # adding Clone-ing of `Py<T>` without GIL (may cause panics - remove if panics happen)
     "multiple-pymethods", # allows multiple #[pymethods] sections per class
+    "auto-initialize", # automatically initialize the Python interpreter
 
     # integrations with other libraries
     "arc_lock", "bigdecimal", "either", "hashbrown", "indexmap", "num-bigint", "num-complex", "num-rational",
